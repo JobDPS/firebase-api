@@ -7,7 +7,7 @@ exports.signUp = async (req, res) => {
     email: req.body.email,
     password: req.body.password,
     confirmPassword: req.body.confirmPassword,
-    handle: req.body.handle,
+    username: req.body.username,
   };
 
   const {errors, valid} = validateSignupData(newUser);
@@ -34,8 +34,8 @@ exports.signUp = async (req, res) => {
   data = await axios
       .post(`https://identitytoolkit.googleapis.com/v1/accounts:update?key=${config.apiKey}`, {
         idToken: token,
-        displayName: req.body.handle,
-        photoUrl: `https://firebasestorage.googleapis.com/v0/b/${config.storageBucket}/o/${defaultImage}?alt=media`,
+        displayName: req.body.username,
+        photoUrl: `https://firebasestorage.googleapis.com/v0/b/${config.storageBucket}/o/public%2F${defaultImage}?alt=media`,
       })
       .catch((err) => {
         return res.status(500).json({error: err.response.data.error.message});
@@ -126,7 +126,7 @@ exports.getUserDetails = async (req, res) => {
   const doc = await axios
       .get(
           `https://firestore.googleapis.com/v1/projects/${config.projectId}/databases/(default)/documents/users/${req
-              .params.handle}`,
+              .params.username}`,
       )
       .catch((err) => {
         return res.status(500).json({error: err.response.data.error.message});
