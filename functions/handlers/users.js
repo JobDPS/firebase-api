@@ -126,7 +126,7 @@ exports.getUserDetails = async (req, res) => {
   const doc = await axios
       .get(
           `https://firestore.googleapis.com/v1/projects/${config.projectId}/databases/(default)/documents/users/${req
-              .params.username}`,
+              .params.userId}`,
       )
       .catch((err) => {
         return res.status(500).json({error: err.response.data.error.message});

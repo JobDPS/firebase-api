@@ -51,7 +51,8 @@ exports.createDiscussionReply = async (req, res) => {
 
   const doc = await axios
       .post(
-          `https://firestore.googleapis.com/v1/projects/${config.projectId}/databases/(default)/documents/discuss/${req.params.postId}/replies`,
+          `https://firestore.googleapis.com/v1/projects/${config.projectId}/databases/(default)/documents/discuss/${req
+              .params.postId}/replies`,
           {
             fields: {
               author: {stringValue: req.user.userId},
@@ -74,7 +75,8 @@ exports.createDiscussionReply = async (req, res) => {
           {
             update: {
               fields,
-              name: `projects/${config.projectId}/databases/(default)/documents/discuss/${req.params.postId}/replies/${postId}`,
+              name: `projects/${config.projectId}/databases/(default)/documents/discuss/${req.params
+                  .postId}/replies/${postId}`,
             },
             updateMask: {
               fieldPaths: mask,
@@ -89,14 +91,14 @@ exports.createDiscussionReply = async (req, res) => {
 
   return res.status(200).json({id: postId});
 };
-
 
 exports.createDiscussionReplyReply = async (req, res) => {
   axios.defaults.headers.common["Authorization"] = `Bearer ${req.idToken}`;
 
   const doc = await axios
       .post(
-          `https://firestore.googleapis.com/v1/projects/${config.projectId}/databases/(default)/documents/discuss/${req.params.postId}/replies/${req.params.replyId}/replies`,
+          `https://firestore.googleapis.com/v1/projects/${config.projectId}/databases/(default)/documents/discuss/${req
+              .params.postId}/replies/${req.params.replyId}/replies`,
           {
             fields: {
               author: {stringValue: req.user.userId},
@@ -119,7 +121,8 @@ exports.createDiscussionReplyReply = async (req, res) => {
           {
             update: {
               fields,
-              name: `projects/${config.projectId}/databases/(default)/documents/discuss/${req.params.postId}/replies/${req.params.replyId}/replies/${postId}`,
+              name: `projects/${config.projectId}/databases/(default)/documents/discuss/${req.params
+                  .postId}/replies/${req.params.replyId}/replies/${postId}`,
             },
             updateMask: {
               fieldPaths: mask,
@@ -135,9 +138,109 @@ exports.createDiscussionReplyReply = async (req, res) => {
   return res.status(200).json({id: postId});
 };
 
+exports.getAllDiscussionPosts = async (req, res) => {
+  // axios.defaults.headers.common["Authorization"] = `Bearer ${req.idToken}`;
+
+  const docs = await axios
+      .get(`https://firestore.googleapis.com/v1/projects/${config.projectId}/databases/(default)/documents/discuss`)
+      .catch((e) => {
+        return res.status(500).json({error: e.response.data.error.message});
+      });
+
+  let allPosts = [];
+  const posts = docs.data.documents;
+  if (posts) {
+    const desc = posts.sort((a, b) => {
+      return new Date(a.createTime) - new Date(b.createTime);
+    });
+    allPosts = await Promise.all(desc.map(async (a) => {
+      const post = {};
+      const postId = a.fields.id.stringValue;
+      const data = await axios
+          .get(
+              `https://firestore.googleapis.com/v1/projects/${config.projectId}/databases/(default)/documents/discuss/${postId}`,
+          )
+          .catch((e) => {
+            return res.status(500).json({error: e.response.data.error.message});
+          });
+      post.info = data.data.fields;
+
+      const user = await axios
+          .get(
+              `https://firestore.googleapis.com/v1/projects/${config.projectId}/databases/(default)/documents/users/${post.info.author.stringValue}`,
+          )
+          .catch((err) => {
+            return res.status(500).json({error: err.response.data.error.message});
+          });
+      post.author = user.data.fields;
+
+      const doc = await axios
+          .get(
+              `https://firestore.googleapis.com/v1/projects/${config.projectId}/databases/(default)/documents/discuss/${postId}/replies`,
+          )
+          .catch((e) => {
+            return res.status(500).json({error: e.response.data.error.message});
+          });
+
+      const messages = doc.data.documents;
+      post.replies = null;
+      if (messages) {
+        const desc = messages.sort((a, b) => {
+          return new Date(a.createTime) - new Date(b.createTime);
+        });
+        const docs = await Promise.all(
+            desc.map(async (a) => {
+              const id = a.fields.id.stringValue;
+              const rep = await axios
+                  .get(
+                      `https://firestore.googleapis.com/v1/projects/${config.projectId}/databases/(default)/documents/discuss/${postId}/replies/${id}/replies`,
+                  )
+                  .catch((e) => {
+                    return res.status(500).json({error: e.response.data.error.message});
+                  });
+
+              let replies = null;
+              if (rep.data.documents) {
+                const desc = rep.data.documents.sort((a, b) => {
+                  return new Date(a.createTime) - new Date(b.createTime);
+                });
+                const docs = await Promise.all(desc.map(async (a) => {
+                  const author = await axios
+                      .get(
+                          `https://firestore.googleapis.com/v1/projects/${config.projectId}/databases/(default)/documents/users/${a.fields.author.stringValue}`,
+                      )
+                      .catch((err) => {
+                        return res.status(500).json({error: err.response.data.error.message});
+                      });
+                  return {info: a.fields, author: author.data.fields};
+                }));
+                replies = docs;
+              }
+
+              const author = await axios
+                  .get(
+                      `https://firestore.googleapis.com/v1/projects/${config.projectId}/databases/(default)/documents/users/${a.fields.author.stringValue}`,
+                  )
+                  .catch((err) => {
+                    return res.status(500).json({error: err.response.data.error.message});
+                  });
+
+              return {info: a.fields, replies, author: author.data.fields};
+            }),
+        );
+
+        post.replies = docs;
+      }
+      return post;
+    }));
+  }
+
+  return res.status(200).json({allPosts});
+};
+
 exports.getDiscussionPost = async (req, res) => {
   const post = {};
-  axios.defaults.headers.common["Authorization"] = `Bearer ${req.idToken}`;
+  // axios.defaults.headers.common["Authorization"] = `Bearer ${req.idToken}`;
   const data = await axios
       .get(
           `https://firestore.googleapis.com/v1/projects/${config.projectId}/databases/(default)/documents/discuss/${req
@@ -147,6 +250,15 @@ exports.getDiscussionPost = async (req, res) => {
         return res.status(500).json({error: e.response.data.error.message});
       });
   post.info = data.data.fields;
+
+  const user = await axios
+      .get(
+          `https://firestore.googleapis.com/v1/projects/${config.projectId}/databases/(default)/documents/users/${post.info.author.stringValue}`,
+      )
+      .catch((err) => {
+        return res.status(500).json({error: err.response.data.error.message});
+      });
+  post.author = user.data.fields;
 
   const doc = await axios
       .get(
@@ -163,27 +275,47 @@ exports.getDiscussionPost = async (req, res) => {
     const desc = messages.sort((a, b) => {
       return new Date(a.createTime) - new Date(b.createTime);
     });
-    const docs = await Promise.all(desc.map(async (a) => {
-      const id = a.fields.id.stringValue;
-      const rep = await axios.get(
-          `https://firestore.googleapis.com/v1/projects/${config.projectId}/databases/(default)/documents/discuss/${req.params.postId}/replies/${id}/replies`,
-      )
-          .catch((e) => {
-            return res.status(500).json({error: e.response.data.error.message});
-          });
+    const docs = await Promise.all(
+        desc.map(async (a) => {
+          const id = a.fields.id.stringValue;
+          const rep = await axios
+              .get(
+                  `https://firestore.googleapis.com/v1/projects/${config.projectId}/databases/(default)/documents/discuss/${req
+                      .params.postId}/replies/${id}/replies`,
+              )
+              .catch((e) => {
+                return res.status(500).json({error: e.response.data.error.message});
+              });
 
-      let replies = null;
-      if (rep.data.documents) {
-        const desc = rep.data.documents.sort((a, b) => {
-          return new Date(a.createTime) - new Date(b.createTime);
-        });
-        const docs = desc.map((a)=>{
-          return a.fields;
-        });
-        replies = docs;
-      }
-      return {info: a.fields, replies};
-    }));
+          let replies = null;
+          if (rep.data.documents) {
+            const desc = rep.data.documents.sort((a, b) => {
+              return new Date(a.createTime) - new Date(b.createTime);
+            });
+            const docs = await Promise.all(desc.map(async (a) => {
+              const author = await axios
+                  .get(
+                      `https://firestore.googleapis.com/v1/projects/${config.projectId}/databases/(default)/documents/users/${a.fields.author.stringValue}`,
+                  )
+                  .catch((err) => {
+                    return res.status(500).json({error: err.response.data.error.message});
+                  });
+              return {info: a.fields, author: author.data.fields};
+            }));
+            replies = docs;
+          }
+
+          const author = await axios
+              .get(
+                  `https://firestore.googleapis.com/v1/projects/${config.projectId}/databases/(default)/documents/users/${a.fields.author.stringValue}`,
+              )
+              .catch((err) => {
+                return res.status(500).json({error: err.response.data.error.message});
+              });
+
+          return {info: a.fields, author: author.data.fields, replies};
+        }),
+    );
 
     post.replies = docs;
   }
@@ -192,7 +324,7 @@ exports.getDiscussionPost = async (req, res) => {
 
 exports.editDiscussionPost = async (req, res) => {
   // TODO: Allow only certain aspects to be edited and only by owner
-//   const channelDetails = validateChannelData(req.body);
+  //   const channelDetails = validateChannelData(req.body);
   const postDetails = req.body;
   axios.defaults.headers.common["Authorization"] = `Bearer ${req.idToken}`;
 
@@ -211,8 +343,7 @@ exports.editDiscussionPost = async (req, res) => {
           {
             update: {
               fields,
-              name: `projects/${config.projectId}/databases/(default)/documents/discuss/${req.params
-                  .postId}`,
+              name: `projects/${config.projectId}/databases/(default)/documents/discuss/${req.params.postId}`,
             },
             updateMask: {
               fieldPaths: mask,
@@ -322,38 +453,40 @@ exports.deleteDiscussionPost = async (req, res) => {
       };
     });
 
-    await Promise.all(messages.map(async (a) => {
-      const id = a.fields.id.stringValue;
-      const doc = await axios
-          .get(
-              `https://firestore.googleapis.com/v1/projects/${config.projectId}/databases/(default)/documents/discuss/${req
-                  .params.postId}/replies/${id}/replies`,
-          )
-          .catch((err) => {
-            return res.status(500).json({error: err.response.data.error.message});
-          });
+    await Promise.all(
+        messages.map(async (a) => {
+          const id = a.fields.id.stringValue;
+          const doc = await axios
+              .get(
+                  `https://firestore.googleapis.com/v1/projects/${config.projectId}/databases/(default)/documents/discuss/${req
+                      .params.postId}/replies/${id}/replies`,
+              )
+              .catch((err) => {
+                return res.status(500).json({error: err.response.data.error.message});
+              });
 
-      const messages = doc.data.documents;
-      if (messages) {
-        const deletes = messages.map((a) => {
-          return {
-            delete: `projects/${config.projectId}/databases/(default)/documents/discuss/${req.params
-                .postId}/replies/${id}/replies/${a.fields.id.stringValue}`,
-          };
-        });
-
-        await axios
-            .post(
-                `https://firestore.googleapis.com/v1/projects/${config.projectId}/databases/(default)/documents:commit`,
-                {
-                  writes: deletes,
-                },
-            )
-            .catch((err) => {
-              return res.status(500).json({error: err.response.data.error.message});
+          const messages = doc.data.documents;
+          if (messages) {
+            const deletes = messages.map((a) => {
+              return {
+                delete: `projects/${config.projectId}/databases/(default)/documents/discuss/${req.params
+                    .postId}/replies/${id}/replies/${a.fields.id.stringValue}`,
+              };
             });
-      }
-    }));
+
+            await axios
+                .post(
+                    `https://firestore.googleapis.com/v1/projects/${config.projectId}/databases/(default)/documents:commit`,
+                    {
+                      writes: deletes,
+                    },
+                )
+                .catch((err) => {
+                  return res.status(500).json({error: err.response.data.error.message});
+                });
+          }
+        }),
+    );
 
     await axios
         .post(

@@ -25,6 +25,7 @@ const {
   editDiscussionReplyReply,
   deleteDiscussionPost,
   deleteDiscussionReplyReply,
+  getAllDiscussionPosts,
 } = require("./handlers/discussionPosts");
 
 app.post("/signup", signUp);
@@ -39,7 +40,8 @@ app.post("/discuss", FBAuth, createDiscussionPost);
 app.post("/discuss/:postId", FBAuth, createDiscussionReply);
 app.post("/discuss/:postId/replies/:replyId", FBAuth, createDiscussionReplyReply);
 
-app.get("/discuss/:postId", FBAuth, getDiscussionPost);
+app.get("/discuss", getAllDiscussionPosts);
+app.get("/discuss/:postId", getDiscussionPost);
 
 app.patch("/discuss/:postId", FBAuth, editDiscussionPost);
 app.patch("/discuss/:postId/replies/:replyId", FBAuth, editDiscussionReply);
