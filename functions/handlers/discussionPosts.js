@@ -103,6 +103,65 @@ exports.createDiscussionReply = async (req, res) => {
 exports.createDiscussionReplyReply = async (req, res) => {
   axios.defaults.headers.common["Authorization"] = `Bearer ${req.idToken}`;
 
+  const errors = {};
+  if (req.body.body.trim() === "") {
+    errors[req.params.replyId] = "Must not be empty";
+  }
+  if (!(Object.keys(errors).length === 0)) return res.status(400).json(errors);
+
+  const doc = await axios
+      .post(
+          `https://firestore.googleapis.com/v1/projects/${config.projectId}/databases/(default)/documents/discuss/${req
+              .params.postId}/replies/${req.params.replyId}/replies`,
+          {
+            fields: {
+              author: {stringValue: req.user.userId},
+              body: {stringValue: req.body.body},
+              vote: {integerValue: 0},
+              // users: { arrayValue: { values: [ { stringValue: req.user.localId } ] } }
+            },
+          },
+      )
+      .catch((err) => {
+        console.log(err.response.data);
+        return res.status(500).json({error: err.response.data.error.message});
+      });
+
+  const postId = doc.data.name.split("/").splice(-1)[0];
+  const fields = {id: {stringValue: postId}, createdAt: {timestampValue: doc.data.createTime}};
+  const mask = ["id", "createdAt"];
+  await axios
+      .post(`https://firestore.googleapis.com/v1/projects/${config.projectId}/databases/(default)/documents:commit`, {
+        writes: [
+          {
+            update: {
+              fields,
+              name: `projects/${config.projectId}/databases/(default)/documents/discuss/${req.params
+                  .postId}/replies/${req.params.replyId}/replies/${postId}`,
+            },
+            updateMask: {
+              fieldPaths: mask,
+            },
+          },
+        ],
+      })
+      .catch((err) => {
+        console.log(err.response.data);
+        return res.status(500).json({error: err.response.data.error.message});
+      });
+
+  return res.status(200).json({id: postId});
+};
+
+exports.createDiscussionReplyReply2 = async (req, res) => {
+  axios.defaults.headers.common["Authorization"] = `Bearer ${req.idToken}`;
+
+  const errors = {};
+  if (req.body.body.trim() === "") {
+    errors[req.params.replyId2] = "Must not be empty";
+  }
+  if (!(Object.keys(errors).length === 0)) return res.status(400).json(errors);
+
   const doc = await axios
       .post(
           `https://firestore.googleapis.com/v1/projects/${config.projectId}/databases/(default)/documents/discuss/${req
@@ -349,6 +408,15 @@ exports.editDiscussionPost = async (req, res) => {
   const postDetails = req.body;
   axios.defaults.headers.common["Authorization"] = `Bearer ${req.idToken}`;
 
+  const errors = {};
+  if (req.body.body.trim() === "") {
+    errors.postBody = "Must not be empty";
+  }
+  if (req.body.title.trim() === "") {
+    errors.postTitle = "Must not be empty";
+  }
+  if (!(Object.keys(errors).length === 0)) return res.status(400).json(errors);
+
   const fields = {};
   const mask = [];
   for (const key in postDetails) {
@@ -384,6 +452,12 @@ exports.editDiscussionReply = async (req, res) => {
   //   const channelDetails = validateChannelData(req.body);
   const replyDetails = req.body;
   axios.defaults.headers.common["Authorization"] = `Bearer ${req.idToken}`;
+
+  const errors = {};
+  if (req.body.body.trim() === "") {
+    errors[req.params.replyId] = "Must not be empty";
+  }
+  if (!(Object.keys(errors).length === 0)) return res.status(400).json(errors);
 
   const fields = {};
   const mask = [];
@@ -421,6 +495,12 @@ exports.editDiscussionReplyReply = async (req, res) => {
   //   const channelDetails = validateChannelData(req.body);
   const replyDetails = req.body;
   axios.defaults.headers.common["Authorization"] = `Bearer ${req.idToken}`;
+
+  const errors = {};
+  if (req.body.body.trim() === "") {
+    errors[req.params.replyId2] = "Must not be empty";
+  }
+  if (!(Object.keys(errors).length === 0)) return res.status(400).json(errors);
 
   const fields = {};
   const mask = [];

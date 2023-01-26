@@ -18,6 +18,7 @@ const {
   createDiscussionPost,
   createDiscussionReply,
   createDiscussionReplyReply,
+  createDiscussionReplyReply2,
   getDiscussionPost,
   deleteDiscussionReply,
   editDiscussionPost,
@@ -39,6 +40,7 @@ app.get("/user/:handle", FBAuth, getUserDetails);
 app.post("/discuss", FBAuth, createDiscussionPost);
 app.post("/discuss/:postId", FBAuth, createDiscussionReply);
 app.post("/discuss/:postId/replies/:replyId", FBAuth, createDiscussionReplyReply);
+app.post("/discuss/:postId/replies/:replyId/replies/:replyId2", FBAuth, createDiscussionReplyReply2);
 
 app.get("/discuss", getAllDiscussionPosts);
 app.get("/discuss/:postId", getDiscussionPost);

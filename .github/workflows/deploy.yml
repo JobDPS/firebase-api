@@ -10,7 +10,7 @@ jobs:
     steps:
     - uses: actions/checkout@v3
     - name: Install
-      run: npm i
+      run: npm i && npm install -g firebase-tools
       working-directory: functions/
     - name: Run deploy
       run: npm run deploy
