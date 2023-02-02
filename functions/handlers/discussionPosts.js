@@ -4,6 +4,15 @@ const config = require("../config");
 exports.createDiscussionPost = async (req, res) => {
   axios.defaults.headers.common["Authorization"] = `Bearer ${req.idToken}`;
 
+  const errors = {};
+  if (req.body.body.trim() === "") {
+    errors.postBody = "Must not be empty";
+  }
+  if (req.body.title.trim() === "") {
+    errors.postTitle = "Must not be empty";
+  }
+  if (!(Object.keys(errors).length === 0)) return res.status(400).json(errors);
+
   const doc = await axios
       .post(
           `https://firestore.googleapis.com/v1/projects/${config.projectId}/databases/(default)/documents/discuss`,

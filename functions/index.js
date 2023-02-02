@@ -29,6 +29,13 @@ const {
   getAllDiscussionPosts,
 } = require("./handlers/discussionPosts");
 
+const {
+  createRelation,
+  getRelations,
+  editRelation,
+  deleteRelation,
+} = require("./handlers/relations");
+
 app.post("/signup", signUp);
 app.post("/login", login);
 app.get("/user", FBAuth, getAuthenticatedUser);
@@ -52,5 +59,10 @@ app.patch("/discuss/:postId/replies/:replyId/replies/:replyId2", FBAuth, editDis
 app.delete("/discuss/:postId", FBAuth, deleteDiscussionPost);
 app.delete("/discuss/:postId/replies/:replyId", FBAuth, deleteDiscussionReply);
 app.delete("/discuss/:postId/replies/:replyId/replies/:replyId2", FBAuth, deleteDiscussionReplyReply);
+
+app.get("/relation", FBAuth, getRelations);
+app.post("/relation", FBAuth, createRelation);
+app.patch("/relation/:relationId", FBAuth, editRelation);
+app.delete("/relation/:relationId", FBAuth, deleteRelation);
 
 exports.api = functions.region("us-central1").https.onRequest(app);
