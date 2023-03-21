@@ -153,12 +153,55 @@ exports.editRelation = async (req, res) => {
   return res.status(200).json({message: "Details added successfully"});
 };
 
+exports.editRelationDate = async (req, res) => {
+  axios.defaults.headers.common["Authorization"] = `Bearer ${req.idToken}`;
+
+  const post = {};
+  const postId = req.params.relationId;
+  const data = await axios
+      .get(
+          `https://firestore.googleapis.com/v1/projects/${config.projectId}/databases/(default)/documents/relation/${postId}`,
+      )
+      .catch((e) => {
+        return res.status(500).json({error: e.response.data.error.message});
+      });
+  post.info = data.data.fields;
+  post.info.dates.arrayValue.values[req.body.index] = {stringValue: req.body.newDate};
+
+  const fields = {};
+  const mask = [];
+  fields["dates"] = post.info.dates;
+  mask.push("dates");
+
+  await axios
+      .post(`https://firestore.googleapis.com/v1/projects/${config.projectId}/databases/(default)/documents:commit`, {
+        writes: [
+          {
+            update: {
+              fields,
+              name: `projects/${config.projectId}/databases/(default)/documents/relation/${req.params
+                  .relationId}`,
+            },
+            updateMask: {
+              fieldPaths: mask,
+            },
+          },
+        ],
+      })
+      .catch((err) => {
+        return res.status(500).json({error: err.response.data.error.message});
+      });
+
+  return res.status(200).json({message: "Details added successfully"});
+};
+
 exports.deleteRelation = async (req, res) => {
   axios.defaults.headers.common["Authorization"] = `Bearer ${req.idToken}`;
 
   await axios
       .delete(
-          `https://firestore.googleapis.com/v1/projects/${config.projectId}/databases/(default)/documents/relation/${req.params.relationId}`,
+          `https://firestore.googleapis.com/v1/projects/${config.projectId}/databases/(default)/documents/relation/${req
+              .params.relationId}`,
       )
       .catch((err) => {
         return res.status(500).json({error: err.response.data.error.message});

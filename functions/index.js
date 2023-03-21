@@ -33,6 +33,7 @@ const {
   createRelation,
   getRelations,
   editRelation,
+  editRelationDate,
   deleteRelation,
 } = require("./handlers/relations");
 
@@ -63,6 +64,7 @@ app.delete("/discuss/:postId/replies/:replyId/replies/:replyId2", FBAuth, delete
 app.get("/relation", FBAuth, getRelations);
 app.post("/relation", FBAuth, createRelation);
 app.patch("/relation/:relationId", FBAuth, editRelation);
+app.patch("/relation/:relationId/date", FBAuth, editRelationDate);
 app.delete("/relation/:relationId", FBAuth, deleteRelation);
 
 exports.api = functions.region("us-central1").https.onRequest(app);
