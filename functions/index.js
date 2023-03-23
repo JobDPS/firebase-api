@@ -32,16 +32,22 @@ const {
 const {
   createRelation,
   getRelations,
+  getRelation,
   editRelation,
   editRelationDate,
   deleteRelation,
 } = require("./handlers/relations");
 
+const {
+  createCompany,
+  getRangeCompanies,
+} = require("./handlers/companies");
+
 app.post("/signup", signUp);
 app.post("/login", login);
 app.get("/user", FBAuth, getAuthenticatedUser);
 app.post("/user", FBAuth, addUserDetails);
-app.get("/user/:handle", FBAuth, getUserDetails);
+app.get("/user/:handle", FBAuth, getUserDetails); // TODO: Remove FBAuth?
 // app.delete('/user', FBAuth, deleteUser);
 // app.post('/user/image', FBAuth, uploadImage);
 
@@ -62,9 +68,13 @@ app.delete("/discuss/:postId/replies/:replyId", FBAuth, deleteDiscussionReply);
 app.delete("/discuss/:postId/replies/:replyId/replies/:replyId2", FBAuth, deleteDiscussionReplyReply);
 
 app.get("/relation", FBAuth, getRelations);
+app.get("/relation/:relationId", FBAuth, getRelation);
 app.post("/relation", FBAuth, createRelation);
 app.patch("/relation/:relationId", FBAuth, editRelation);
 app.patch("/relation/:relationId/date", FBAuth, editRelationDate);
 app.delete("/relation/:relationId", FBAuth, deleteRelation);
+
+app.post("/company", getRangeCompanies);
+app.post("/company", FBAuth, createCompany);
 
 exports.api = functions.region("us-central1").https.onRequest(app);

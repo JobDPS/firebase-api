@@ -8,9 +8,9 @@ exports.createRelation = async (req, res) => {
   if (req.body.company.trim() === "") {
     errors.relationCompany = "Must not be empty";
   }
-  if (req.body.date.trim() === "") {
-    errors.relationDate = "Must not be empty";
-  }
+  // if (req.body.date.trim() === "") {
+  //   errors.relationDate = "Must not be empty";
+  // }
   if (!(Object.keys(errors).length === 0)) return res.status(400).json(errors);
 
   const doc = await axios
@@ -20,12 +20,12 @@ exports.createRelation = async (req, res) => {
             fields: {
               company: {stringValue: req.body.company},
               author: {stringValue: req.user.userId},
-              date: {timestampValue: req.body.date},
+              // date: {timestampValue: req.body.date},
               stage: {integerValue: 0},
               status: {integerValue: 0},
               notes: {stringValue: ""},
               starred: {integerValue: 0},
-              // users: { arrayValue: { values: [ { stringValue: req.user.localId } ] } }
+              dates: {arrayValue: {values: [{stringValue: ""}, {stringValue: ""}, {stringValue: ""}, {stringValue: ""}, {stringValue: ""}, {stringValue: ""}]}},
             },
           },
       )
@@ -93,7 +93,58 @@ exports.getRelations = async (req, res) => {
     );
   }
 
+  const userData = {};
+  const doc = await axios
+      .get(
+          `https://firestore.googleapis.com/v1/projects/${config.projectId}/databases/(default)/documents/users/${req
+              .user.userId}`,
+      )
+      .catch((err) => {
+        return res.status(500).json({error: err.response.data.error.message});
+      });
+  userData.credentials = doc.data.fields;
+
+  allRelations = allRelations.filter((relation) =>
+    userData.credentials.relations.arrayValue.values.filter(
+        (id) => id.stringValue === relation.info.id.stringValue,
+    ).length > 0,
+  );
+
   return res.status(200).json({allRelations});
+};
+
+exports.getRelation = async (req, res) => {
+  axios.defaults.headers.common["Authorization"] = `Bearer ${req.idToken}`;
+
+  const relation = {};
+  const postId = req.params.relationId;
+  const data = await axios
+      .get(
+          `https://firestore.googleapis.com/v1/projects/${config.projectId}/databases/(default)/documents/relation/${postId}`,
+      )
+      .catch((e) => {
+        return res.status(500).json({error: e.response.data.error.message});
+      });
+  relation.info = data.data.fields;
+
+  const userData = {};
+  const doc = await axios
+      .get(
+          `https://firestore.googleapis.com/v1/projects/${config.projectId}/databases/(default)/documents/users/${req
+              .user.userId}`,
+      )
+      .catch((err) => {
+        return res.status(500).json({error: err.response.data.error.message});
+      });
+  userData.credentials = doc.data.fields;
+
+  if (userData.credentials.relations.arrayValue.values.filter(
+      (id) => id.stringValue === relation.info.id.stringValue,
+  ).length > 0) {
+    return res.status(200).json({relation});
+  } else {
+    return res.status(403).json({error: "Unauthorized"});
+  }
 };
 
 exports.editRelation = async (req, res) => {

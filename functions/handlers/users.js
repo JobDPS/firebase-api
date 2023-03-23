@@ -154,5 +154,5 @@ exports.getAuthenticatedUser = async (req, res) => {
   userData.credentials = doc.data.fields;
   userData.credentials.userId = req.user.userId;
   // TODO: retrieve other info for other collections (messages, notifs, etc)
-  return res.json({userData, token: req.idToken, refreshToken: req.refresh_token});
+  return res.json({userData});
 };
