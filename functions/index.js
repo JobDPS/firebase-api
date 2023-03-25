@@ -4,6 +4,11 @@ const cors = require("cors");
 app.use(cors());
 const FBAuth = require("./utils/fbAuth");
 
+// const admin = require("firebase-admin");
+// const algoliasearch = require("algoliasearch");
+// const config = require("./config");
+// admin.initializeApp(functions.config().firebase);
+
 const {
   signUp,
   login,
@@ -41,6 +46,8 @@ const {
 const {
   createCompany,
   getRangeCompanies,
+  editUserStarredCompanies,
+  searchCompanies,
 } = require("./handlers/companies");
 
 app.post("/signup", signUp);
@@ -75,6 +82,26 @@ app.patch("/relation/:relationId/date", FBAuth, editRelationDate);
 app.delete("/relation/:relationId", FBAuth, deleteRelation);
 
 app.post("/company", getRangeCompanies);
-app.post("/company", FBAuth, createCompany);
+app.post("/company/new", FBAuth, createCompany);
+app.post("/company/star", FBAuth, editUserStarredCompanies);
+app.post("/company/search", searchCompanies);
 
 exports.api = functions.region("us-central1").https.onRequest(app);
+
+// const client = algoliasearch(config.algoliaAppId, config.algoliaApiKey);
+// const index = client.initIndex("company");
+
+// exports.addData = functions.region("us-central1").https.onRequest((req, res) => {
+//   admin.firestore().collection("company").get().then((docs) => {
+//     const companies = [];
+//     docs.forEach((doc) => {
+//       const comp = doc.data();
+//       comp.objectID = doc.id;
+//       companies.push(comp);
+//     });
+
+//     index.saveObjects(companies, (err, content) => {
+//       res.status(200).send(content);
+//     });
+//   });
+// });

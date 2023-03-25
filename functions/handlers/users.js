@@ -52,7 +52,8 @@ exports.signUp = async (req, res) => {
               email: {stringValue: data.email},
               imageUrl: {stringValue: data.photoUrl},
               status: {stringValue: ""},
-              //   servers: {arrayValue: {values: []}},
+              relations: {arrayValue: {values: []}},
+              starredCompanies: {arrayValue: {values: []}},
               // last login date? (below?)
             },
           },

@@ -1,6 +1,17 @@
 const axios = require("axios");
 const config = require("../config");
 
+const algoliasearch = require("algoliasearch");
+
+const client = algoliasearch(config.algoliaAppId, config.algoliaApiKey, {protocol: "https:"});
+const index = client.initIndex("company");
+index.setSettings({
+  "customRanking": [
+    "asc(name)",
+  ],
+  "relevancyStrictness": 0,
+}).catch((e)=>console.log(e));
+
 exports.createCompany = async (req, res) => {
   axios.defaults.headers.common["Authorization"] = `Bearer ${req.idToken}`;
 
@@ -60,34 +71,108 @@ exports.createCompany = async (req, res) => {
 
 exports.getRangeCompanies = async (req, res) => {
   const docs = await axios
-      .get(`https://firestore.googleapis.com/v1/projects/${config.projectId}/databases/(default)/documents/company`)
+      .post(
+          `https://firestore.googleapis.com/v1/projects/${config.projectId}/databases/(default)/documents:runQuery`,
+          {
+            structuredQuery: {
+              from: [
+                {
+                  collectionId: "company",
+                },
+              ],
+              orderBy: [
+                {
+                  field: {
+                    fieldPath: "id",
+                  },
+                  direction: "ASCENDING",
+                },
+              ],
+              offset: req.body.page * req.body.pageSize,
+              limit: req.body.pageSize,
+            },
+          },
+      )
       .catch((e) => {
         return res.status(500).json({error: e.response.data.error.message});
       });
 
-  let companies = [];
-  const posts = docs.data.documents;
-  if (posts) {
-    const desc = posts.sort((a, b) => {
-      return new Date(a.createTime) - new Date(b.createTime);
-    });
-    companies = await Promise.all(
-        desc.map(async (a) => {
-          const post = {};
-          const postId = a.fields.id.stringValue;
-          const data = await axios
-              .get(
-                  `https://firestore.googleapis.com/v1/projects/${config.projectId}/databases/(default)/documents/company/${postId}`,
-              )
-              .catch((e) => {
-                return res.status(500).json({error: e.response.data.error.message});
-              });
-          post.info = data.data.fields;
-          return post;
-        }),
-    );
+  const companies = docs.data.filter((doc) => doc.document).map((doc) => {
+    return doc.document.fields;
+  });
+  return res.status(200).json({companies});
+};
+
+exports.searchCompanies = async (req, res) => {
+  const data = await index.search(req.body.query, {
+    "attributesToRetrieve": [
+      "id",
+    ],
+    "hitsPerPage": 10,
+    "page": 0,
+    "analytics": false,
+    "enableABTest": false,
+  }).catch((err) => {
+    return res.status(500).json({error: err});
+  });
+
+  const companies = await Promise.all(
+      data.hits.map(async (a) => {
+        const comp = await axios
+            .get(
+                `https://firestore.googleapis.com/v1/projects/${config.projectId}/databases/(default)/documents/company/${a.id}`,
+            )
+            .catch((err) => {
+              return res.status(500).json({error: err.response.data.error.message});
+            });
+        return comp.data.fields;
+      }),
+  );
+  return res.status(200).json({companies});
+};
+
+exports.editUserStarredCompanies = async (req, res) => {
+  axios.defaults.headers.common["Authorization"] = `Bearer ${req.idToken}`;
+
+  const userData = {};
+  const doc = await axios
+      .get(
+          `https://firestore.googleapis.com/v1/projects/${config.projectId}/databases/(default)/documents/users/${req
+              .user.userId}`,
+      )
+      .catch((err) => {
+        return res.status(500).json({error: err.response.data.error.message});
+      });
+  userData.credentials = doc.data.fields;
+
+  const fields = {};
+  const mask = ["starredCompanies"];
+  if (userData.credentials.starredCompanies.arrayValue.values && userData.credentials.starredCompanies.arrayValue.values
+      .map((id) => id.stringValue)
+      .includes(req.body.id)) {
+    fields["starredCompanies"] = {arrayValue: {values:
+      userData.credentials.starredCompanies.arrayValue.values.filter((id) => id.stringValue !== req.body.id),
+    }};
+  } else {
+    fields["starredCompanies"] = {arrayValue: {values:
+      [...(userData.credentials.starredCompanies.arrayValue.values ?? []), {stringValue: req.body.id}],
+    }};
   }
 
-  companies = companies.slice(req.body.page * 10, (req.body.page + 1) * 10);
-  return res.status(200).json({companies});
+  await axios
+      .post(`https://firestore.googleapis.com/v1/projects/${config.projectId}/databases/(default)/documents:commit`, {
+        writes: [
+          {
+            update: {
+              fields,
+              name: `projects/${config.projectId}/databases/(default)/documents/users/${req.user.localId}`,
+            },
+            updateMask: {fieldPaths: mask},
+          },
+        ],
+      })
+      .catch((err) => {
+        return res.status(500).json({error: err.response.data.error.message});
+      });
+  return res.status(200).json({message: "Details added successfully"});
 };
