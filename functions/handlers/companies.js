@@ -3,14 +3,8 @@ const config = require("../config");
 
 const algoliasearch = require("algoliasearch");
 
-const client = algoliasearch(config.algoliaAppId, config.algoliaApiKey, {protocol: "https:"});
+const client = algoliasearch(config.algoliaAppId, config.algoliaApiKey);
 const index = client.initIndex("company");
-index.setSettings({
-  "customRanking": [
-    "asc(name)",
-  ],
-  "relevancyStrictness": 0,
-}).catch((e)=>console.log(e));
 
 exports.createCompany = async (req, res) => {
   axios.defaults.headers.common["Authorization"] = `Bearer ${req.idToken}`;
