@@ -52,8 +52,10 @@ exports.signUp = async (req, res) => {
               email: {stringValue: data.email},
               imageUrl: {stringValue: data.photoUrl},
               status: {stringValue: ""},
+              id: {stringValue: data.localId},
               relations: {arrayValue: {values: []}},
               starredCompanies: {arrayValue: {values: []}},
+              following: {arrayValue: {values: []}},
               // last login date? (below?)
             },
           },

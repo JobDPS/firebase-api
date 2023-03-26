@@ -155,7 +155,7 @@ exports.getRelations = async (req, res) => {
 
   allRelations = allRelations.filter(
       (relation) =>
-        userData.credentials.relations.arrayValue.values.filter(
+        userData.credentials.relations.arrayValue.values && userData.credentials.relations.arrayValue.values.filter(
             (id) => id.stringValue === relation.info.id.stringValue,
         ).length > 0,
   );
@@ -199,7 +199,7 @@ exports.getRelation = async (req, res) => {
   userData.credentials = doc.data.fields;
 
   if (
-    userData.credentials.relations.arrayValue.values.filter((id) => id.stringValue === relation.info.id.stringValue)
+    !userData.credentials.relations.arrayValue.values || userData.credentials.relations.arrayValue.values.filter((id) => id.stringValue === relation.info.id.stringValue)
         .length === 0
   ) {
     return res.status(403).json({error: "Unauthorized"});
@@ -317,7 +317,7 @@ exports.deleteRelation = async (req, res) => {
   userData.credentials = doc.data.fields;
 
   if (
-    userData.credentials.relations.arrayValue.values.filter((id) => id.stringValue === req
+    !userData.credentials.relations.arrayValue.values || userData.credentials.relations.arrayValue.values.filter((id) => id.stringValue === req
         .params.relationId)
         .length === 0
   ) {

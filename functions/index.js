@@ -50,6 +50,21 @@ const {
   searchCompanies,
 } = require("./handlers/companies");
 
+const {
+  createSocialPost,
+  createSocialReply,
+  createSocialReplyReply,
+  createSocialReplyReply2,
+  getSocialPost,
+  deleteSocialReply,
+  editSocialPost,
+  editSocialReply,
+  editSocialReplyReply,
+  deleteSocialPost,
+  deleteSocialReplyReply,
+  getAllSocialPosts,
+} = require("./handlers/socialPosts");
+
 app.post("/signup", signUp);
 app.post("/login", login);
 app.get("/user", FBAuth, getAuthenticatedUser);
@@ -85,6 +100,22 @@ app.post("/company", getRangeCompanies);
 app.post("/company/new", FBAuth, createCompany);
 app.post("/company/star", FBAuth, editUserStarredCompanies);
 app.post("/company/search", searchCompanies);
+
+app.post("/social", FBAuth, createSocialPost);
+app.post("/social/:postId", FBAuth, createSocialReply);
+app.post("/social/:postId/replies/:replyId", FBAuth, createSocialReplyReply);
+app.post("/social/:postId/replies/:replyId/replies/:replyId2", FBAuth, createSocialReplyReply2);
+
+app.get("/social", FBAuth, getAllSocialPosts);
+app.get("/social/:postId", getSocialPost);
+
+app.patch("/social/:postId", FBAuth, editSocialPost);
+app.patch("/social/:postId/replies/:replyId", FBAuth, editSocialReply);
+app.patch("/social/:postId/replies/:replyId/replies/:replyId2", FBAuth, editSocialReplyReply);
+
+app.delete("/social/:postId", FBAuth, deleteSocialPost);
+app.delete("/social/:postId/replies/:replyId", FBAuth, deleteSocialReply);
+app.delete("/social/:postId/replies/:replyId/replies/:replyId2", FBAuth, deleteSocialReplyReply);
 
 exports.api = functions.region("us-central1").https.onRequest(app);
 
