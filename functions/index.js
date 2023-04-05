@@ -15,6 +15,12 @@ const {
   addUserDetails,
   getAuthenticatedUser,
   getUserDetails,
+  getUserDetailsDiscuss,
+  getUserDetailsSocial,
+  getUserDetailsCompanies,
+  getUserDetailsFollowing,
+  getUserDetailsFollowers,
+  followUser,
   // deleteUser,
   // uploadImage
 } = require("./handlers/users");
@@ -69,7 +75,15 @@ app.post("/signup", signUp);
 app.post("/login", login);
 app.get("/user", FBAuth, getAuthenticatedUser);
 app.post("/user", FBAuth, addUserDetails);
-app.get("/user/:handle", FBAuth, getUserDetails); // TODO: Remove FBAuth?
+
+app.get("/user/:userId", getUserDetails);
+app.get("/user/:userId/discuss", getUserDetailsDiscuss);
+app.get("/user/:userId/social", getUserDetailsSocial);
+app.get("/user/:userId/companies", getUserDetailsCompanies);
+app.get("/user/:userId/following", getUserDetailsFollowing);
+app.get("/user/:userId/followers", getUserDetailsFollowers);
+app.post("/user/:userId", FBAuth, followUser);
+
 // app.delete('/user', FBAuth, deleteUser);
 // app.post('/user/image', FBAuth, uploadImage);
 
