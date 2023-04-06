@@ -112,7 +112,7 @@ exports.addUserDetails = async (req, res) => {
           {
             update: {
               fields,
-              name: `projects/${config.projectId}/databases/(default)/documents/users/${req.user.localId}`,
+              name: `projects/${config.projectId}/databases/(default)/documents/users/${req.user.userId}`,
             },
             updateMask: {fieldPaths: mask},
           },
@@ -317,7 +317,7 @@ exports.getUserDetailsSocial = async (req, res) => {
 
           const doc = await axios
               .get(
-                  `https://firestore.googleapis.com/v1/projects/${config.projectId}/databases/(default)/documents/discuss/${postId}/replies`,
+                  `https://firestore.googleapis.com/v1/projects/${config.projectId}/databases/(default)/documents/social/${postId}/replies`,
               )
               .catch((e) => {
                 return res.status(500).json({error: e.response.data.error.message});
@@ -334,7 +334,7 @@ exports.getUserDetailsSocial = async (req, res) => {
                   const id = a.fields.id.stringValue;
                   const rep = await axios
                       .get(
-                          `https://firestore.googleapis.com/v1/projects/${config.projectId}/databases/(default)/documents/discuss/${postId}/replies/${id}/replies`,
+                          `https://firestore.googleapis.com/v1/projects/${config.projectId}/databases/(default)/documents/social/${postId}/replies/${id}/replies`,
                       )
                       .catch((e) => {
                         return res.status(500).json({error: e.response.data.error.message});
@@ -379,22 +379,22 @@ exports.getUserDetailsCompanies = async (req, res) => {
   userData.credentials = doc.data.fields;
 
   const companyIds = userData.credentials.starredCompanies.arrayValue.values;
-
-  let companies = await Promise.all(
-      companyIds.map(async (a) => {
-        const comp = await axios
-            .get(
-                `https://firestore.googleapis.com/v1/projects/${config.projectId}/databases/(default)/documents/company/${a.stringValue}`,
-            )
-            .catch((err) => {
-              return res.status(500).json({error: err.response.data.error.message});
-            });
-        return comp.data.fields;
-      }),
-  );
-  companies = companies.sort((a, b) => {
-    return a.id.stringValue - b.id.stringValue;
-  });
+  let companies = [];
+  if (companyIds) {
+    companies = await Promise.all(
+        companyIds.map(async (a) => {
+          const comp = await axios
+              .get(
+                  `https://firestore.googleapis.com/v1/projects/${config.projectId}/databases/(default)/documents/company/${a.stringValue}`,
+              )
+              .catch((err) => {
+                return res.status(500).json({error: err.response.data.error.message});
+              });
+          return comp.data.fields;
+        }),
+    );
+  }
+  companies.sort((a, b) => a.id.stringValue.localeCompare(b.id.stringValue));
   return res.json({companies: companies});
 };
 
@@ -611,4 +611,62 @@ exports.followUser = async (req, res) => {
         return res.status(500).json({error: err.response.data.error.message});
       });
   return res.status(200).json({message: "Details added successfully"});
+};
+
+exports.uploadImage = async (req, res) => {
+  const bb = require("busboy");
+  const path = require("path");
+  const os = require("os");
+  const fs = require("fs");
+  const busboy = bb({headers: req.headers});
+  let imageToBeUploaded = {};
+  let imageFileName = "";
+  busboy.on("file", (fieldname, file, fileInfo) => {
+    const {filename, mimeType} = fileInfo;
+    if (mimeType !== "image/jpeg" && mimeType !== "image/png") {
+      return res.status(400).json({error: "Wrong file type submitted"});
+    }
+    if (imageFileName !== "") {
+      return;
+    }
+    const imageExtension = filename.split(".")[filename.split(".").length - 1];
+    imageFileName = `${Math.round(Math.random() * 1000000000000).toString()}.${imageExtension}`;
+    const filepath = path.join(os.tmpdir(), imageFileName);
+    imageToBeUploaded = {filepath, mimeType};
+    file.pipe(fs.createWriteStream(filepath));
+  });
+
+  busboy.on("finish", async () => {
+    axios.defaults.headers.common["Authorization"] = `Bearer ${req.idToken}`;
+
+    await axios
+        .post(
+            `https://firebasestorage.googleapis.com/v0/b/${config.storageBucket}/o/public%2F${imageFileName}`,
+            fs.createReadStream(imageToBeUploaded.filepath),
+            {headers: {"Content-Type": imageToBeUploaded.mimeType}},
+        )
+        .catch((e) => {
+          console.log(e);
+          return res.status(500).json({e});
+        });
+
+    const imageUrl = `https://firebasestorage.googleapis.com/v0/b/${config.storageBucket}/o/public%2F${imageFileName}?alt=media`;
+
+    await axios.patch(
+        `https://firestore.googleapis.com/v1/projects/${config.projectId}/databases/(default)/documents/users/${req
+            .user.localId}?updateMask.fieldPaths=imageUrl`,
+        {
+          fields: {imageUrl: {stringValue: imageUrl}},
+        },
+    ).catch((e) => {
+      return res.status(500).json({e});
+    });
+    return res.json({message: "Image successfully loaded"});
+  });
+  busboy.on("error", (e) => {
+    console.log(e);
+    return res.status(500).json({e});
+  });
+
+  busboy.end(req.rawBody);
 };

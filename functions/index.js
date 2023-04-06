@@ -21,8 +21,8 @@ const {
   getUserDetailsFollowing,
   getUserDetailsFollowers,
   followUser,
+  uploadImage,
   // deleteUser,
-  // uploadImage
 } = require("./handlers/users");
 
 const {
@@ -82,10 +82,10 @@ app.get("/user/:userId/social", getUserDetailsSocial);
 app.get("/user/:userId/companies", getUserDetailsCompanies);
 app.get("/user/:userId/following", getUserDetailsFollowing);
 app.get("/user/:userId/followers", getUserDetailsFollowers);
-app.post("/user/:userId", FBAuth, followUser);
+app.post("/user/:userId/follow", FBAuth, followUser);
 
 // app.delete('/user', FBAuth, deleteUser);
-// app.post('/user/image', FBAuth, uploadImage);
+app.post("/user/image", FBAuth, uploadImage);
 
 app.post("/discuss", FBAuth, createDiscussionPost);
 app.post("/discuss/:postId", FBAuth, createDiscussionReply);

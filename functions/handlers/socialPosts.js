@@ -231,7 +231,7 @@ exports.getAllSocialPosts = async (req, res) => {
   const posts = docs.data.documents;
   if (posts) {
     let desc = posts.sort((a, b) => {
-      return new Date(a.createTime) - new Date(b.createTime);
+      return new Date(b.createTime) - new Date(a.createTime);
     });
     desc = desc.filter((a) => a.fields.author.stringValue === req.user.userId || (userData.credentials.following.arrayValue.values && userData.credentials.following.arrayValue.values.includes(a.fields.author.stringValue)));
     allPosts = await Promise.all(
