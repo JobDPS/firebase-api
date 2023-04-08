@@ -146,6 +146,16 @@ exports.recommendDiscuss = async (req, res) => {
                 return res.status(500).json({error: e.response.data.error.message});
               });
 
+          const user = await axios
+              .get(
+                  `https://firestore.googleapis.com/v1/projects/${config.projectId}/databases/(default)/documents/users/${post
+                      .info.author.stringValue}`,
+              )
+              .catch((err) => {
+                return res.status(500).json({error: err.response.data.error.message});
+              });
+          post.author = user.data.fields;
+
           const messages = doc.data.documents;
           post.replies = null;
           if (messages) {
@@ -197,6 +207,16 @@ exports.recommendDiscuss = async (req, res) => {
               .catch((e) => {
                 return res.status(500).json({error: e.response.data.error.message});
               });
+
+          const user = await axios
+              .get(
+                  `https://firestore.googleapis.com/v1/projects/${config.projectId}/databases/(default)/documents/users/${post
+                      .info.author.stringValue}`,
+              )
+              .catch((err) => {
+                return res.status(500).json({error: err.response.data.error.message});
+              });
+          post.author = user.data.fields;
 
           const messages = doc.data.documents;
           post.replies = null;
@@ -336,6 +356,16 @@ exports.recommendSocial = async (req, res) => {
                 return res.status(500).json({error: e.response.data.error.message});
               });
 
+          const user = await axios
+              .get(
+                  `https://firestore.googleapis.com/v1/projects/${config.projectId}/databases/(default)/documents/users/${post
+                      .info.author.stringValue}`,
+              )
+              .catch((err) => {
+                return res.status(500).json({error: err.response.data.error.message});
+              });
+          post.author = user.data.fields;
+
           const messages = doc.data.documents;
           post.replies = null;
           if (messages) {
@@ -387,6 +417,16 @@ exports.recommendSocial = async (req, res) => {
               .catch((e) => {
                 return res.status(500).json({error: e.response.data.error.message});
               });
+
+          const user = await axios
+              .get(
+                  `https://firestore.googleapis.com/v1/projects/${config.projectId}/databases/(default)/documents/users/${post
+                      .info.author.stringValue}`,
+              )
+              .catch((err) => {
+                return res.status(500).json({error: err.response.data.error.message});
+              });
+          post.author = user.data.fields;
 
           const messages = doc.data.documents;
           post.replies = null;
