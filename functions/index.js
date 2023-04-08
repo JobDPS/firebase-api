@@ -71,6 +71,13 @@ const {
   getAllSocialPosts,
 } = require("./handlers/socialPosts");
 
+const {
+  recommendUsers,
+  recommendDiscuss,
+  recommendCompanies,
+  recommendSocial,
+} = require("./handlers/recommend");
+
 app.post("/signup", signUp);
 app.post("/login", login);
 app.get("/user", FBAuth, getAuthenticatedUser);
@@ -130,6 +137,11 @@ app.patch("/social/:postId/replies/:replyId/replies/:replyId2", FBAuth, editSoci
 app.delete("/social/:postId", FBAuth, deleteSocialPost);
 app.delete("/social/:postId/replies/:replyId", FBAuth, deleteSocialReply);
 app.delete("/social/:postId/replies/:replyId/replies/:replyId2", FBAuth, deleteSocialReplyReply);
+
+app.get("/recommend/user", FBAuth, recommendUsers);
+app.get("/recommend/discuss", FBAuth, recommendDiscuss);
+app.get("/recommend/social", FBAuth, recommendSocial);
+app.get("/recommend/company", FBAuth, recommendCompanies);
 
 exports.api = functions.region("us-central1").https.onRequest(app);
 
