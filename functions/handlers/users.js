@@ -49,7 +49,7 @@ exports.signUp = async (req, res) => {
           {
             fields: {
               username: {stringValue: data.displayName},
-              email: {stringValue: data.email},
+              // email: {stringValue: data.email},
               imageUrl: {stringValue: data.photoUrl},
               status: {stringValue: ""},
               id: {stringValue: data.localId},
