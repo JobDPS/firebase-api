@@ -59,6 +59,8 @@ exports.signUp = async (req, res) => {
               followingTimestamps: {arrayValue: {values: []}},
               followers: {arrayValue: {values: []}},
               followersTimestamps: {arrayValue: {values: []}},
+              likes: {arrayValue: {values: []}},
+              likesTimestamps: {arrayValue: {values: []}},
               // last login date? (below?)
             },
           },
@@ -532,11 +534,13 @@ exports.followUser = async (req, res) => {
       .map((id) => id.stringValue)
       .includes(req.params.userId)) {
     const idx = userData.credentials.following.arrayValue.values.map((a) => a.stringValue).indexOf(req.params.userId) + 1;
+    userData.credentials.following.arrayValue.values.splice(idx, 1);
+    userData.credentials.followingTimestamps.arrayValue.values.splice(idx, 1);
     fields["following"] = {arrayValue: {values:
-      userData.credentials.following.arrayValue.values.splice(idx, 1),
+      userData.credentials.following.arrayValue.values,
     }};
     fields["followingTimestamps"] = {arrayValue: {values:
-      userData.credentials.followingTimestamps.arrayValue.values.splice(idx, 1),
+      userData.credentials.followingTimestamps.arrayValue.values,
     }};
   } else {
     fields["following"] = {arrayValue: {values:
@@ -580,11 +584,13 @@ exports.followUser = async (req, res) => {
       .map((id) => id.stringValue)
       .includes(req.user.userId)) {
     const idx = userData2.credentials.followers.arrayValue.values.map((a) => a.stringValue).indexOf(req.user.userId) + 1;
+    userData2.credentials.followers.arrayValue.values.splice(idx, 1);
+    userData2.credentials.followersTimestamps.arrayValue.values.splice(idx, 1);
     fields["followers"] = {arrayValue: {values:
-      userData2.credentials.followers.arrayValue.values.splice(idx, 1),
+      userData2.credentials.followers.arrayValue.values,
     }};
     fields["followersTimestamps"] = {arrayValue: {values:
-      userData2.credentials.followersTimestamps.arrayValue.values.splice(idx, 1),
+      userData2.credentials.followersTimestamps.arrayValue.values,
     }};
   } else {
     fields["followers"] = {arrayValue: {values:
@@ -669,4 +675,99 @@ exports.uploadImage = async (req, res) => {
   });
 
   busboy.end(req.rawBody);
+};
+
+exports.likePost = async (req, res) => {
+  axios.defaults.headers.common["Authorization"] = `Bearer ${req.idToken}`;
+
+  // Disallow liking of own posts?
+
+  const userData = {};
+  const doc = await axios
+      .get(
+          `https://firestore.googleapis.com/v1/projects/${config.projectId}/databases/(default)/documents/users/${req
+              .user.userId}`,
+      )
+      .catch((err) => {
+        return res.status(500).json({error: err.response.data.error.message});
+      });
+  userData.credentials = doc.data.fields;
+
+  let fields = {};
+  let mask = ["likes", "likesTimestamps"];
+  let idx = -1;
+  if (userData.credentials.likes.arrayValue.values && userData.credentials.likes.arrayValue.values
+      .map((id) => id.stringValue)
+      .includes(req.params.postId)) {
+    idx = userData.credentials.likes.arrayValue.values.map((a) => a.stringValue).indexOf(req.params.postId);
+    userData.credentials.likes.arrayValue.values.splice(idx, 1);
+    userData.credentials.likesTimestamps.arrayValue.values.splice(idx, 1);
+    fields["likes"] = {arrayValue: {values:
+      userData.credentials.likes.arrayValue.values,
+    }};
+    fields["likesTimestamps"] = {arrayValue: {values:
+      userData.credentials.likesTimestamps.arrayValue.values,
+    }};
+  } else {
+    fields["likes"] = {arrayValue: {values:
+      [...(userData.credentials.likes.arrayValue.values ?? []), {stringValue: req.params.postId}],
+    }};
+    fields["likesTimestamps"] = {arrayValue: {values:
+      [...(userData.credentials.likesTimestamps.arrayValue.values ?? []), {timestampValue: new Date()}],
+    }};
+  }
+
+  await axios
+      .post(`https://firestore.googleapis.com/v1/projects/${config.projectId}/databases/(default)/documents:commit`, {
+        writes: [
+          {
+            update: {
+              fields,
+              name: `projects/${config.projectId}/databases/(default)/documents/users/${req.user.userId}`,
+            },
+            updateMask: {fieldPaths: mask},
+          },
+        ],
+      })
+      .catch((err) => {
+        return res.status(500).json({error: err.response.data.error.message});
+      });
+
+  const post = {};
+  const data = await axios
+      .get(
+          `https://firestore.googleapis.com/v1/projects/${config.projectId}/databases/(default)/documents/social/${req
+              .params.postId}`,
+      )
+      .catch((e) => {
+        return res.status(500).json({error: e.response.data.error.message});
+      });
+  post.info = data.data.fields;
+
+  if (idx === -1) {
+    fields = {vote: {integerValue: parseInt(post.info.vote.integerValue) + 1}};
+  } else {
+    fields = {vote: {integerValue: parseInt(post.info.vote.integerValue) - 1}};
+  }
+  mask = ["vote"];
+
+  await axios
+      .post(`https://firestore.googleapis.com/v1/projects/${config.projectId}/databases/(default)/documents:commit`, {
+        writes: [
+          {
+            update: {
+              fields,
+              name: `projects/${config.projectId}/databases/(default)/documents/social/${req.params.postId}`,
+            },
+            updateMask: {
+              fieldPaths: mask,
+            },
+          },
+        ],
+      })
+      .catch((err) => {
+        return res.status(500).json({error: err.response.data.error.message});
+      });
+
+  return res.status(200).json({message: "Details added successfully"});
 };

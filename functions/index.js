@@ -22,6 +22,7 @@ const {
   getUserDetailsFollowers,
   followUser,
   uploadImage,
+  likePost,
   // deleteUser,
 } = require("./handlers/users");
 
@@ -137,6 +138,8 @@ app.patch("/social/:postId/replies/:replyId/replies/:replyId2", FBAuth, editSoci
 app.delete("/social/:postId", FBAuth, deleteSocialPost);
 app.delete("/social/:postId/replies/:replyId", FBAuth, deleteSocialReply);
 app.delete("/social/:postId/replies/:replyId/replies/:replyId2", FBAuth, deleteSocialReplyReply);
+
+app.post("/social/:postId/like", FBAuth, likePost);
 
 app.get("/recommend/user", FBAuth, recommendUsers);
 app.get("/recommend/discuss", FBAuth, recommendDiscuss);
