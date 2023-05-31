@@ -23,6 +23,7 @@ const {
   followUser,
   uploadImage,
   likePost,
+  dislikePost,
   // deleteUser,
 } = require("./handlers/users");
 
@@ -110,6 +111,9 @@ app.patch("/discuss/:postId/replies/:replyId/replies/:replyId2", FBAuth, editDis
 app.delete("/discuss/:postId", FBAuth, deleteDiscussionPost);
 app.delete("/discuss/:postId/replies/:replyId", FBAuth, deleteDiscussionReply);
 app.delete("/discuss/:postId/replies/:replyId/replies/:replyId2", FBAuth, deleteDiscussionReplyReply);
+
+app.post("/discuss/:postId/like", FBAuth, likePost);
+app.post("/discuss/:postId/dislike", FBAuth, dislikePost);
 
 app.get("/relation", FBAuth, getRelations);
 app.get("/relation/:relationId", FBAuth, getRelation);

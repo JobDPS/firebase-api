@@ -61,6 +61,8 @@ exports.signUp = async (req, res) => {
               followersTimestamps: {arrayValue: {values: []}},
               likes: {arrayValue: {values: []}},
               likesTimestamps: {arrayValue: {values: []}},
+              dislikes: {arrayValue: {values: []}},
+              dislikesTimestamps: {arrayValue: {values: []}},
               // last login date? (below?)
             },
           },
@@ -693,6 +695,97 @@ exports.likePost = async (req, res) => {
       });
   userData.credentials = doc.data.fields;
 
+  if (userData.credentials.dislikes.arrayValue.values && userData.credentials.dislikes.arrayValue.values
+      .map((id) => id.stringValue)
+      .includes(req.params.postId)) {
+    const userData = {};
+    const doc = await axios
+        .get(
+            `https://firestore.googleapis.com/v1/projects/${config.projectId}/databases/(default)/documents/users/${req
+                .user.userId}`,
+        )
+        .catch((err) => {
+          return res.status(500).json({error: err.response.data.error.message});
+        });
+    userData.credentials = doc.data.fields;
+
+    let fields = {};
+    let mask = ["dislikes", "dislikesTimestamps"];
+    let idx = -1;
+    if (userData.credentials.dislikes.arrayValue.values && userData.credentials.dislikes.arrayValue.values
+        .map((id) => id.stringValue)
+        .includes(req.params.postId)) {
+      idx = userData.credentials.dislikes.arrayValue.values.map((a) => a.stringValue).indexOf(req.params.postId);
+      userData.credentials.dislikes.arrayValue.values.splice(idx, 1);
+      userData.credentials.dislikesTimestamps.arrayValue.values.splice(idx, 1);
+      fields["dislikes"] = {arrayValue: {values:
+      userData.credentials.dislikes.arrayValue.values,
+      }};
+      fields["dislikesTimestamps"] = {arrayValue: {values:
+      userData.credentials.dislikesTimestamps.arrayValue.values,
+      }};
+    } else {
+      fields["dislikes"] = {arrayValue: {values:
+      [...(userData.credentials.dislikes.arrayValue.values ?? []), {stringValue: req.params.postId}],
+      }};
+      fields["dislikesTimestamps"] = {arrayValue: {values:
+      [...(userData.credentials.dislikesTimestamps.arrayValue.values ?? []), {timestampValue: new Date()}],
+      }};
+    }
+
+    await axios
+        .post(`https://firestore.googleapis.com/v1/projects/${config.projectId}/databases/(default)/documents:commit`, {
+          writes: [
+            {
+              update: {
+                fields,
+                name: `projects/${config.projectId}/databases/(default)/documents/users/${req.user.userId}`,
+              },
+              updateMask: {fieldPaths: mask},
+            },
+          ],
+        })
+        .catch((err) => {
+          return res.status(500).json({error: err.response.data.error.message});
+        });
+
+    const post = {};
+    const data = await axios
+        .get(
+            `https://firestore.googleapis.com/v1/projects/${config.projectId}/databases/(default)/documents/${req.url.split("/")[1]}/${req
+                .params.postId}`,
+        )
+        .catch((e) => {
+          return res.status(500).json({error: e.response.data.error.message});
+        });
+    post.info = data.data.fields;
+
+    if (idx === -1) {
+      fields = {vote: {integerValue: parseInt(post.info.vote.integerValue) - 1}};
+    } else {
+      fields = {vote: {integerValue: parseInt(post.info.vote.integerValue) + 1}};
+    }
+    mask = ["vote"];
+
+    await axios
+        .post(`https://firestore.googleapis.com/v1/projects/${config.projectId}/databases/(default)/documents:commit`, {
+          writes: [
+            {
+              update: {
+                fields,
+                name: `projects/${config.projectId}/databases/(default)/documents/${req.url.split("/")[1]}/${req.params.postId}`,
+              },
+              updateMask: {
+                fieldPaths: mask,
+              },
+            },
+          ],
+        })
+        .catch((err) => {
+          return res.status(500).json({error: err.response.data.error.message});
+        });
+  }
+
   let fields = {};
   let mask = ["likes", "likesTimestamps"];
   let idx = -1;
@@ -736,7 +829,7 @@ exports.likePost = async (req, res) => {
   const post = {};
   const data = await axios
       .get(
-          `https://firestore.googleapis.com/v1/projects/${config.projectId}/databases/(default)/documents/social/${req
+          `https://firestore.googleapis.com/v1/projects/${config.projectId}/databases/(default)/documents/${req.url.split("/")[1]}/${req
               .params.postId}`,
       )
       .catch((e) => {
@@ -757,7 +850,194 @@ exports.likePost = async (req, res) => {
           {
             update: {
               fields,
-              name: `projects/${config.projectId}/databases/(default)/documents/social/${req.params.postId}`,
+              name: `projects/${config.projectId}/databases/(default)/documents/${req.url.split("/")[1]}/${req.params.postId}`,
+            },
+            updateMask: {
+              fieldPaths: mask,
+            },
+          },
+        ],
+      })
+      .catch((err) => {
+        return res.status(500).json({error: err.response.data.error.message});
+      });
+
+  return res.status(200).json({message: "Details added successfully"});
+};
+
+exports.dislikePost = async (req, res) => {
+  axios.defaults.headers.common["Authorization"] = `Bearer ${req.idToken}`;
+
+  // Disallow liking of own posts?
+
+  const userData = {};
+  const doc = await axios
+      .get(
+          `https://firestore.googleapis.com/v1/projects/${config.projectId}/databases/(default)/documents/users/${req
+              .user.userId}`,
+      )
+      .catch((err) => {
+        return res.status(500).json({error: err.response.data.error.message});
+      });
+  userData.credentials = doc.data.fields;
+
+
+  if (userData.credentials.likes.arrayValue.values && userData.credentials.likes.arrayValue.values
+      .map((id) => id.stringValue)
+      .includes(req.params.postId)) {
+    const userData = {};
+    const doc = await axios
+        .get(
+            `https://firestore.googleapis.com/v1/projects/${config.projectId}/databases/(default)/documents/users/${req
+                .user.userId}`,
+        )
+        .catch((err) => {
+          return res.status(500).json({error: err.response.data.error.message});
+        });
+    userData.credentials = doc.data.fields;
+
+    let fields = {};
+    let mask = ["likes", "likesTimestamps"];
+    let idx = -1;
+    if (userData.credentials.likes.arrayValue.values && userData.credentials.likes.arrayValue.values
+        .map((id) => id.stringValue)
+        .includes(req.params.postId)) {
+      idx = userData.credentials.likes.arrayValue.values.map((a) => a.stringValue).indexOf(req.params.postId);
+      userData.credentials.likes.arrayValue.values.splice(idx, 1);
+      userData.credentials.likesTimestamps.arrayValue.values.splice(idx, 1);
+      fields["likes"] = {arrayValue: {values:
+      userData.credentials.likes.arrayValue.values,
+      }};
+      fields["likesTimestamps"] = {arrayValue: {values:
+      userData.credentials.likesTimestamps.arrayValue.values,
+      }};
+    } else {
+      fields["likes"] = {arrayValue: {values:
+      [...(userData.credentials.likes.arrayValue.values ?? []), {stringValue: req.params.postId}],
+      }};
+      fields["likesTimestamps"] = {arrayValue: {values:
+      [...(userData.credentials.likesTimestamps.arrayValue.values ?? []), {timestampValue: new Date()}],
+      }};
+    }
+
+    await axios
+        .post(`https://firestore.googleapis.com/v1/projects/${config.projectId}/databases/(default)/documents:commit`, {
+          writes: [
+            {
+              update: {
+                fields,
+                name: `projects/${config.projectId}/databases/(default)/documents/users/${req.user.userId}`,
+              },
+              updateMask: {fieldPaths: mask},
+            },
+          ],
+        })
+        .catch((err) => {
+          return res.status(500).json({error: err.response.data.error.message});
+        });
+
+    const post = {};
+    const data = await axios
+        .get(
+            `https://firestore.googleapis.com/v1/projects/${config.projectId}/databases/(default)/documents/${req.url.split("/")[1]}/${req
+                .params.postId}`,
+        )
+        .catch((e) => {
+          return res.status(500).json({error: e.response.data.error.message});
+        });
+    post.info = data.data.fields;
+
+    if (idx === -1) {
+      fields = {vote: {integerValue: parseInt(post.info.vote.integerValue) + 1}};
+    } else {
+      fields = {vote: {integerValue: parseInt(post.info.vote.integerValue) - 1}};
+    }
+    mask = ["vote"];
+
+    await axios
+        .post(`https://firestore.googleapis.com/v1/projects/${config.projectId}/databases/(default)/documents:commit`, {
+          writes: [
+            {
+              update: {
+                fields,
+                name: `projects/${config.projectId}/databases/(default)/documents/${req.url.split("/")[1]}/${req.params.postId}`,
+              },
+              updateMask: {
+                fieldPaths: mask,
+              },
+            },
+          ],
+        })
+        .catch((err) => {
+          return res.status(500).json({error: err.response.data.error.message});
+        });
+  }
+
+  let fields = {};
+  let mask = ["dislikes", "dislikesTimestamps"];
+  let idx = -1;
+  if (userData.credentials.dislikes.arrayValue.values && userData.credentials.dislikes.arrayValue.values
+      .map((id) => id.stringValue)
+      .includes(req.params.postId)) {
+    idx = userData.credentials.dislikes.arrayValue.values.map((a) => a.stringValue).indexOf(req.params.postId);
+    userData.credentials.dislikes.arrayValue.values.splice(idx, 1);
+    userData.credentials.dislikesTimestamps.arrayValue.values.splice(idx, 1);
+    fields["dislikes"] = {arrayValue: {values:
+      userData.credentials.dislikes.arrayValue.values,
+    }};
+    fields["dislikesTimestamps"] = {arrayValue: {values:
+      userData.credentials.dislikesTimestamps.arrayValue.values,
+    }};
+  } else {
+    fields["dislikes"] = {arrayValue: {values:
+      [...(userData.credentials.dislikes.arrayValue.values ?? []), {stringValue: req.params.postId}],
+    }};
+    fields["dislikesTimestamps"] = {arrayValue: {values:
+      [...(userData.credentials.dislikesTimestamps.arrayValue.values ?? []), {timestampValue: new Date()}],
+    }};
+  }
+
+  await axios
+      .post(`https://firestore.googleapis.com/v1/projects/${config.projectId}/databases/(default)/documents:commit`, {
+        writes: [
+          {
+            update: {
+              fields,
+              name: `projects/${config.projectId}/databases/(default)/documents/users/${req.user.userId}`,
+            },
+            updateMask: {fieldPaths: mask},
+          },
+        ],
+      })
+      .catch((err) => {
+        return res.status(500).json({error: err.response.data.error.message});
+      });
+
+  const post = {};
+  const data = await axios
+      .get(
+          `https://firestore.googleapis.com/v1/projects/${config.projectId}/databases/(default)/documents/${req.url.split("/")[1]}/${req
+              .params.postId}`,
+      )
+      .catch((e) => {
+        return res.status(500).json({error: e.response.data.error.message});
+      });
+  post.info = data.data.fields;
+
+  if (idx === -1) {
+    fields = {vote: {integerValue: parseInt(post.info.vote.integerValue) - 1}};
+  } else {
+    fields = {vote: {integerValue: parseInt(post.info.vote.integerValue) + 1}};
+  }
+  mask = ["vote"];
+
+  await axios
+      .post(`https://firestore.googleapis.com/v1/projects/${config.projectId}/databases/(default)/documents:commit`, {
+        writes: [
+          {
+            update: {
+              fields,
+              name: `projects/${config.projectId}/databases/(default)/documents/${req.url.split("/")[1]}/${req.params.postId}`,
             },
             updateMask: {
               fieldPaths: mask,
